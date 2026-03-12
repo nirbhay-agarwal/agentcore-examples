@@ -1,0 +1,3 @@
+strands-ai
+boto3
+python-dotenv
