@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+before_search.png
+search_results.png
+no_search_found.png
+amazon_search.png

@@ -1,7 +1,10 @@
 strands-agents
 boto3
 python-dotenv
-playwright
 strands-agents-tools
-strands-agents-builder
+nest_asyncio
 bedrock-agentcore
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+streamlit
