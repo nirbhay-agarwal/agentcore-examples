@@ -1,3 +1,7 @@
-strands-ai
+strands-agents
 boto3
 python-dotenv
+playwright
+strands-agents-tools
+strands-agents-builder
+bedrock-agentcore
