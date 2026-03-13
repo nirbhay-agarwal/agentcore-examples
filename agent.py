@@ -2,53 +2,59 @@
 import os
 from dotenv import load_dotenv
 from strands import Agent
-from strands_tools.browser import AgentCoreBrowser
+from custom_browser import search_watch_on_website
 
 # Load your AWS credentials from .env file
 load_dotenv()
 
-# Initialize browser tool directly
-browser_tool = AgentCoreBrowser(region=os.getenv('AWS_REGION', 'us-east-1'))
 
-# Create the agent
+# Create the agent with custom browser tool
 def create_watch_agent():
     """
-    Creates our watch tracking agent with AgentCore Browser
+    Creates our watch tracking agent with YOUR custom browser
     """
     agent = Agent(
         model="global.anthropic.claude-sonnet-4-6",
-        tools=[browser_tool.browser]
+        tools=[search_watch_on_website]  # Use your custom browser tool
     )
     
     return agent
 
 # Function to search for watches
-def track_watch(watch_model: str):
+def track_watch(watch_model: str, website: str = "ebay"):
     """
     Track prices for a specific watch model
     """
+    
     print(f"\n🔍 Searching for: {watch_model}")
+    print(f"🌐 Website: {website}")
     print("⏳ This may take a moment...\n")
     
     agent = create_watch_agent()
     
-    # Use eBay - simpler site
+    sites = {
+        "ebay": "https://www.ebay.com",
+        "jomashop": "https://www.jomashop.com",
+    }
+    
+    site_url = sites.get(website.lower(), sites["ebay"])
+    
     prompt = f"""
-Visit https://www.ebay.com and search for "{watch_model}".
+Use the search_watch_on_website tool to search for "{watch_model}" on {site_url}.
 
-Look at the first 3 results and tell me:
-- Price
-- Title
-
-Keep it simple. If the site is slow or has issues, just tell me what you can see.
+Extract the first 3 results with prices and conditions.
 """
     
-    response = agent(prompt)
-    return response
+    try:
+        response = agent(prompt)
+        result_text = str(response)
+        return response
+    except Exception as e:
+        raise
 
 # Test
 if __name__ == "__main__":
-    print("✅ Starting browser test...\n")
-    result = track_watch("Rolex Submariner 126610LN")
+    print("✅ Starting watch tracker with YOUR custom browser...\n")
+    result = track_watch("Rolex Submariner 126610LN", "ebay")
     print("\n📊 Result:")
     print(result)
