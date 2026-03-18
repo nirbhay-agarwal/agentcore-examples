@@ -121,18 +121,15 @@ def patch_browser(browser_tool):
 col_left, col_right = st.columns([2, 1])
 
 with col_left:
-    st.subheader("📝 Agent Instructions")
+    st.subheader("Agent Instructions")
     
     # Default instructions
-    default_instructions = """Go to https://www.ebay.com and search for "Rolex Submariner 126610LN".
+    default_instructions = """Go to https://www.amazon.com and search for "Seiko SNKL023".
 
 Find the first 3 listings and extract:
 - Title
 - Price
-- Condition
-- Seller
-
-Return results in a clear table format."""
+"""
     
     instructions = st.text_area(
         "Write your instructions for the browser agent:",
@@ -142,26 +139,25 @@ Return results in a clear table format."""
     )
 
 with col_right:
-    st.subheader("⚙️ Configuration")
-    st.info(f"🔧 **Browser:** `{BROWSER_ID}`")
-    st.info(f"🤖 **Model:** `claude-sonnet-4-6`")
-    st.info(f"🌍 **Region:** `{REGION}`")
+    st.subheader("Configuration")
+    st.markdown(f"**Browser:** `{BROWSER_ID}`")
+    st.markdown(f"**Model:** `claude-sonnet-4-6`")
+    st.markdown(f"**Region:** `{REGION}`")
     
     if st.session_state.session_id:
         st.success(f"**Session:** `{st.session_state.session_id[:20]}...`")
 
 # Run button
-run_button = st.button("🚀 Run Agent", type="primary", use_container_width=True)
+run_button = st.button("Run Agent", type="primary", use_container_width=True)
 
-st.divider()
 st.divider()
 
 # Activity Log - full width
-st.subheader("📋 Activity Log")
+st.subheader("Activity Log")
 log_placeholder = st.empty()
 
 # Live Browser View - full width below
-st.subheader("🖥️ Live Browser View")
+st.subheader("Live Browser View")
 view_placeholder = st.empty()
 
 result_placeholder = st.empty()
@@ -242,7 +238,7 @@ if run_button:
             env['OTEL_PYTHON_CONFIGURATOR'] = 'aws_configurator'
             env['OTEL_EXPORTER_OTLP_PROTOCOL'] = 'http/protobuf'
             env['OTEL_TRACES_EXPORTER'] = 'otlp'
-            env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = 'x-aws-log-group=/agentcore/watch-tracker,x-aws-log-stream=watch-tracker-agent,x-aws-metric-namespace=bedrock-agentcore'
+            env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = 'x-aws-log-group=/agentcore/watch-tracker,x-aws-log-stream=default,x-aws-metric-namespace=bedrock-agentcore'
             env['OTEL_RESOURCE_ATTRIBUTES'] = 'service.name=watch-tracker-agent'
             env['AGENT_OBSERVABILITY_ENABLED'] = 'true'
 
@@ -259,54 +255,73 @@ if run_button:
                 bufsize=1  # Line buffered
             )
 
-            result_text = ""
-            live_view_shown = False
+            result_lines = []
+            capturing_result = False
+            result_text = ""  
 
-            # Read output line by line
-            with st.spinner("🤖 Agent is working..."):
-                while True:
-                    line = process.stdout.readline()
-                    if not line and process.poll() is not None:
-                        break
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
 
-                    line = line.strip()
-                    if not line:
-                        continue
+                line = line.strip()
+                if not line:
+                    continue
 
-                    # Parse special output lines
-                    if line.startswith("SESSION_ID:"):
-                        session_id = line.replace("SESSION_ID:", "")
-                        st.session_state.session_id = session_id
-                        add_log(f"Session: {session_id}", "SUCCESS")
-                        display_logs(log_placeholder)
+                if line == "RESULT_START":
+                    capturing_result = True
+                    continue
 
-                    elif line.startswith("LIVE_VIEW_URL:"):
-                        live_view_url = line.replace("LIVE_VIEW_URL:", "")
-                        st.session_state.live_view_url = live_view_url
-                        add_log("Live view ready!", "SUCCESS")
-                        display_logs(log_placeholder)
-                        show_live_view(url=live_view_url, status="active")
-                        live_view_shown = True
+                elif line == "RESULT_END":
+                    capturing_result = False
+                    result_text = "\n".join(result_lines)
+                    add_log(f"Got {len(result_lines)} lines of results", "SUCCESS")  # Debug
+                    add_log(f"Result preview: {result_text[:100]}", "SUCCESS")  # Debug
+                    display_logs(log_placeholder)
+                    continue
 
-                    elif line.startswith("RESULT:"):
-                        result_text = line.replace("RESULT:", "")
-                        add_log("Agent completed!", "SUCCESS")
+                elif capturing_result:
+                    result_lines.append(line)
+                    continue
 
-                    else:
-                        # Show other output as logs
+                elif line.startswith("SESSION_ID:"):
+                    session_id = line.replace("SESSION_ID:", "")
+                    st.session_state.session_id = session_id
+                    add_log(f"Session: {session_id}", "SUCCESS")
+                    display_logs(log_placeholder)
+
+                elif line.startswith("LIVE_VIEW_URL:"):
+                    live_view_url = line.replace("LIVE_VIEW_URL:", "")
+                    st.session_state.live_view_url = live_view_url
+                    add_log("Live view ready!", "SUCCESS")
+                    display_logs(log_placeholder)
+                    show_live_view(url=live_view_url, status="active")
+
+                elif line.startswith("SESSION_STOPPED:"):
+                    add_log("Browser session terminated", "SUCCESS")
+                    display_logs(log_placeholder)
+
+                else:
+                    if not line.startswith("Tool #") and line.strip():
                         add_log(line, "INFO")
                         display_logs(log_placeholder)
 
             process.wait()
+
+            # Debug
+            add_log(f"Process done. result_text length: {len(result_text)}", "INFO")
+            display_logs(log_placeholder)
 
             # Show results
             show_live_view(status="completed")
             display_logs(log_placeholder)
 
             if result_text:
-                st.divider()
-                st.subheader("🎯 Results")
-                st.markdown(result_text)
+                result_placeholder.markdown(f"""
+            ---
+            ### 🎯 Results
+            {result_text}
+            """)
 
         except Exception as e:
             add_log(f"Error: {str(e)}", "ERROR")

@@ -1,4 +1,4 @@
-strands-agents
+strands-agents[otel]
 strands-agents-tools
 bedrock-agentcore
 boto3
@@ -6,3 +6,4 @@ python-dotenv
 nest-asyncio
 playwright
 streamlit
+aws-opentelemetry-distro==0.16.0
