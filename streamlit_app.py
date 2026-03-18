@@ -227,97 +227,90 @@ if run_button:
         st.session_state.logs = []
         st.session_state.live_view_url = None
         st.session_state.session_id = None
-        st.session_state.results = None
 
         add_log("Starting agent run...")
         display_logs(log_placeholder)
         show_live_view(status="idle")
 
         try:
+            import subprocess
             import threading
 
-            # Initialize browser tool
-            add_log(f"Initializing browser: {BROWSER_ID}")
+            # Build env with OTEL vars
+            env = os.environ.copy()
+            env['OTEL_PYTHON_DISTRO'] = 'aws_distro'
+            env['OTEL_PYTHON_CONFIGURATOR'] = 'aws_configurator'
+            env['OTEL_EXPORTER_OTLP_PROTOCOL'] = 'http/protobuf'
+            env['OTEL_TRACES_EXPORTER'] = 'otlp'
+            env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = 'x-aws-log-group=/agentcore/watch-tracker,x-aws-log-stream=watch-tracker-agent,x-aws-metric-namespace=bedrock-agentcore'
+            env['OTEL_RESOURCE_ATTRIBUTES'] = 'service.name=watch-tracker-agent'
+            env['AGENT_OBSERVABILITY_ENABLED'] = 'true'
+
+            add_log("Launching agent process with observability...")
             display_logs(log_placeholder)
 
-            browser_tool = AgentCoreBrowser(
-                region=REGION,
-                identifier=BROWSER_ID
+            # Run agent as subprocess with opentelemetry-instrument
+            process = subprocess.Popen(
+                ['opentelemetry-instrument', 'python', 'run_agent.py', instructions],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+                bufsize=1  # Line buffered
             )
 
-            # Patch to capture session
-            session_capture = patch_browser(browser_tool)
-
-            # Create agent
-            agent = Agent(
-                model="global.anthropic.claude-sonnet-4-6",
-                tools=[browser_tool.browser]
-            )
-
-            add_log("Agent ready! Starting...", "SUCCESS")
-            display_logs(log_placeholder)
-
-            # Run agent in background thread
-            result_container = {}
-
-            def run_agent():
-                try:
-                    result_container['response'] = agent(instructions)
-                    result_container['done'] = True
-                except Exception as e:
-                    result_container['error'] = str(e)
-                    result_container['done'] = True
-
-            thread = threading.Thread(target=run_agent)
-            thread.start()
-
-            # Poll while agent is running
-            import time
+            result_text = ""
             live_view_shown = False
 
-            with st.spinner("🤖 Agent is working... Live view will appear shortly →"):
-                while thread.is_alive() or not result_container.get('done'):
-                    time.sleep(2)
-
-                    # Show live view as soon as URL is available
-                    if session_capture.get('live_view_url') and not live_view_shown:
-                        st.session_state.live_view_url = session_capture['live_view_url']
-                        st.session_state.session_id = session_capture['session_id']
-                        add_log(f"Session started: {session_capture['session_id']}", "SUCCESS")
-                        add_log("Live view is ready!", "SUCCESS")
-                        display_logs(log_placeholder)
-                        show_live_view(
-                            url=session_capture['live_view_url'],
-                            status="active"
-                        )
-                        live_view_shown = True
-
-                    if result_container.get('done'):
+            # Read output line by line
+            with st.spinner("🤖 Agent is working..."):
+                while True:
+                    line = process.stdout.readline()
+                    if not line and process.poll() is not None:
                         break
 
-            thread.join()
+                    line = line.strip()
+                    if not line:
+                        continue
 
-            # Handle results
-            if result_container.get('error'):
-                raise Exception(result_container['error'])
+                    # Parse special output lines
+                    if line.startswith("SESSION_ID:"):
+                        session_id = line.replace("SESSION_ID:", "")
+                        st.session_state.session_id = session_id
+                        add_log(f"Session: {session_id}", "SUCCESS")
+                        display_logs(log_placeholder)
 
-            response = result_container.get('response')
+                    elif line.startswith("LIVE_VIEW_URL:"):
+                        live_view_url = line.replace("LIVE_VIEW_URL:", "")
+                        st.session_state.live_view_url = live_view_url
+                        add_log("Live view ready!", "SUCCESS")
+                        display_logs(log_placeholder)
+                        show_live_view(url=live_view_url, status="active")
+                        live_view_shown = True
 
-            add_log("Agent completed!", "SUCCESS")
-            display_logs(log_placeholder)
+                    elif line.startswith("RESULT:"):
+                        result_text = line.replace("RESULT:", "")
+                        add_log("Agent completed!", "SUCCESS")
 
-            # Show completed state
-            show_live_view(status="completed")
+                    else:
+                        # Show other output as logs
+                        add_log(line, "INFO")
+                        display_logs(log_placeholder)
+
+            process.wait()
 
             # Show results
-            st.divider()
-            st.subheader("🎯 Results")
-            st.markdown(str(response))
+            show_live_view(status="completed")
+            display_logs(log_placeholder)
+
+            if result_text:
+                st.divider()
+                st.subheader("🎯 Results")
+                st.markdown(result_text)
 
         except Exception as e:
             add_log(f"Error: {str(e)}", "ERROR")
             display_logs(log_placeholder)
-            show_live_view(status="idle")
             st.error(f"❌ Error: {str(e)}")
 
 else:
