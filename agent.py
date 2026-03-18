@@ -3,49 +3,40 @@ import os
 from dotenv import load_dotenv
 from strands import Agent
 from strands_tools.browser import AgentCoreBrowser
+from bedrock_agentcore.tools.browser_client import BrowserClient
 
-# Load your AWS credentials
 load_dotenv()
 
-# Use the built-in AgentCoreBrowser (it handles everything automatically)
-browser_tool = AgentCoreBrowser(region=os.getenv('AWS_REGION', 'us-east-1'))
+BROWSER_ID = os.getenv('BROWSER_TOOL_ARN').split('/')[-1]
+REGION = os.getenv('AWS_REGION', 'us-east-1')
 
-def create_watch_agent():
-    """Creates agent with working browser"""
-    agent = Agent(
-        model="global.anthropic.claude-sonnet-4-6",
-        tools=[browser_tool.browser]  # This tool actually browses
-    )
-    return agent
+# Step 1: Start browser session via BrowserClient to get live view URL
+browser_client = BrowserClient(region=REGION)
+browser_client.start(identifier=BROWSER_ID)
 
-def track_watch(watch_model: str, website: str = "ebay"):
-    print(f"\n🔍 Searching for: {watch_model}")
-    print(f"🌐 Website: {website}\n")
-    
-    agent = create_watch_agent()
-    
-    sites = {
-        "ebay": "https://www.ebay.com",
-        "jomashop": "https://www.jomashop.com",
-    }
-    
-    site_url = sites.get(website.lower(), sites["ebay"])
-    
-    prompt = f"""
-Go to {site_url} and search for "{watch_model}".
+print(f"✅ Browser session started: {browser_client.session_id}")
 
-Find the first 3 listings and extract:
-- Title
-- Price
-- Condition
+# Step 2: Get live view URL
+live_view_url = browser_client.generate_live_view_url(expires=300)
+print(f"🖥️  Live view URL: {live_view_url[:80]}...")
 
-Give me real data from the actual website.
-"""
-    
-    response = agent(prompt)
-    return response
+# Step 3: Create AgentCoreBrowser using the SAME session
+browser_tool = AgentCoreBrowser(
+    region=REGION,
+    identifier=BROWSER_ID
+)
 
-if __name__ == "__main__":
-    result = track_watch("Rolex Submariner 126610LN", "ebay")
-    print("\n📊 Result:")
-    print(result)
+# Step 4: Create agent with browser tool
+agent = Agent(
+    model="global.anthropic.claude-sonnet-4-6",
+    tools=[browser_tool.browser]
+)
+
+# Step 5: Run agent
+response = agent("Go to https://www.ebay.com and search for Rolex Submariner 126610LN. Give me the first 3 listings with prices.")
+
+print(response)
+
+# Step 6: Stop session
+browser_client.stop()
+print("✅ Session stopped")
