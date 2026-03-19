@@ -4,5 +4,5 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
-dcv-sdk/
 *.log
+browser-agent/dcv-sdk/

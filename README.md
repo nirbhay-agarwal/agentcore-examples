@@ -1,26 +1,36 @@
-# 🌐 AgentCore Browser Agent
+# 🚀 AWS Bedrock AgentCore Examples
 
-A generic AI-powered browser agent built with AWS Bedrock AgentCore, 
-Strands Agents, and Streamlit.
+A collection of practical examples using AWS Bedrock AgentCore primitives built with Strands Agents framework.
 
-## Features
-- 🤖 AI agent that can browse any website
-- 🖥️ Live browser view powered by AWS DCV
-- 📊 Full observability via CloudWatch GenAI dashboard
-- 📹 Session recordings saved to S3
-- ✏️ Editable instructions - works for any use case!
+## Examples
 
-## Demo
-![Agent browsing eBay](demo.png)
+| Example | Description | Status |
+|---------|-------------|--------|
+| [🌐 Browser Agent](./browser-agent) | AI agent that browses any website with live view, observability and session recordings | ✅ Ready |
+| [🧠 Memory Agent](./memory-agent) | Agent with persistent memory across sessions | 🔜 Coming Soon |
+| [💻 Code Interpreter](./code-interpreter-agent) | Agent that writes and executes code | 🔜 Coming Soon |
+| [🔗 Gateway Agent](./gateway-agent) | Agent exposed via API endpoint | 🔜 Coming Soon |
+| [🤝 Multi-Agent](./multi-agent) | Multiple primitives working together | 🔜 Coming Soon |
+
+## What is AgentCore?
+
+AWS Bedrock AgentCore provides managed infrastructure primitives for building production-ready AI agents:
+
+- **Browser** - Managed browser sessions for web automation
+- **Memory** - Persistent memory across agent sessions
+- **Code Interpreter** - Secure code execution environment
+- **Gateway** - API endpoints for agent invocation
+- **Observability** - Built-in tracing and monitoring
 
 ## Setup
-Follow the complete setup instructions in [SETUP.md](SETUP.md)
+See [SETUP.md](./SETUP.md) for complete AWS and environment setup instructions.
 
-## Built With
+## Tech Stack
 - [AWS Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
 - [Strands Agents](https://strandsagents.com)
 - [Streamlit](https://streamlit.io)
 - [Amazon DCV](https://aws.amazon.com/hpc/dcv/)
+- [OpenTelemetry](https://opentelemetry.io)
 
 ## Author
 [@nirbhay-agarwal](https://github.com/nirbhay-agarwal)
