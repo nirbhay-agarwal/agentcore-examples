@@ -238,6 +238,7 @@ if run_button:
             env['OTEL_PYTHON_CONFIGURATOR'] = 'aws_configurator'
             env['OTEL_EXPORTER_OTLP_PROTOCOL'] = 'http/protobuf'
             env['OTEL_TRACES_EXPORTER'] = 'otlp'
+            env['OTEL_PROPAGATORS'] = 'xray,tracecontext,baggage'
             env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = 'x-aws-log-group=/agentcore/watch-tracker,x-aws-log-stream=default,x-aws-metric-namespace=bedrock-agentcore'
             env['OTEL_RESOURCE_ATTRIBUTES'] = 'service.name=watch-tracker-agent'
             env['AGENT_OBSERVABILITY_ENABLED'] = 'true'
