@@ -1,4 +1,5 @@
 # streamlit_app.py
+import sys
 import streamlit as st
 import os
 import urllib.parse
@@ -8,9 +9,15 @@ from strands_tools.browser import AgentCoreBrowser
 from bedrock_agentcore.tools.browser_client import BrowserClient
 from datetime import datetime
 
-load_dotenv()
+from pathlib import Path
+load_dotenv(Path(__file__).parent / '.env')
 
-BROWSER_ID = os.getenv('BROWSER_TOOL_ARN').split('/')[-1]
+BROWSER_TOOL_ARN = os.getenv('BROWSER_TOOL_ARN')
+if not BROWSER_TOOL_ARN:
+    print("❌ BROWSER_TOOL_ARN not found in .env file!")
+    sys.exit(1)
+
+BROWSER_ID = BROWSER_TOOL_ARN.split('/')[-1]
 REGION = os.getenv('AWS_REGION', 'us-east-1')
 
 # Page config
@@ -205,7 +212,7 @@ def show_live_view(url=None, status="idle"):
             <p style='color:#666; font-family:monospace; font-size:0.8rem;'>
                 Session: {st.session_state.session_id}
             </p>
-            <a href='https://us-east-1.console.aws.amazon.com/s3/buckets/watch-watcher' 
+            <a href='https://us-east-1.console.aws.amazon.com/s3/buckets/'  
                target='_blank'
                style='color:#1f77b4; font-family:monospace;'>
                 📹 View Recording in S3 →
@@ -239,8 +246,8 @@ if run_button:
             env['OTEL_EXPORTER_OTLP_PROTOCOL'] = 'http/protobuf'
             env['OTEL_TRACES_EXPORTER'] = 'otlp'
             env['OTEL_PROPAGATORS'] = 'xray,tracecontext,baggage'
-            env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = 'x-aws-log-group=/agentcore/watch-tracker,x-aws-log-stream=default,x-aws-metric-namespace=bedrock-agentcore'
-            env['OTEL_RESOURCE_ATTRIBUTES'] = 'service.name=watch-tracker-agent'
+            env['OTEL_EXPORTER_OTLP_LOGS_HEADERS'] = os.getenv('OTEL_EXPORTER_OTLP_LOGS_HEADERS')
+            env['OTEL_RESOURCE_ATTRIBUTES'] = os.getenv('OTEL_RESOURCE_ATTRIBUTES')
             env['AGENT_OBSERVABILITY_ENABLED'] = 'true'
 
             add_log("Launching agent process with observability...")
