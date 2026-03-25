@@ -6,9 +6,15 @@ from strands import Agent
 from strands_tools.browser import AgentCoreBrowser
 from bedrock_agentcore.tools.browser_client import BrowserClient as ABC
 
-load_dotenv()
+from pathlib import Path
+load_dotenv(Path(__file__).parent / '.env')
 
-BROWSER_ID = os.getenv('BROWSER_TOOL_ARN').split('/')[-1]
+BROWSER_TOOL_ARN = os.getenv('BROWSER_TOOL_ARN')
+if not BROWSER_TOOL_ARN:
+    st.error("❌ BROWSER_TOOL_ARN not found in .env file!")
+    st.stop()
+
+BROWSER_ID = BROWSER_TOOL_ARN.split('/')[-1]
 REGION = os.getenv('AWS_REGION', 'us-east-1')
 
 # Get instructions from command line argument
